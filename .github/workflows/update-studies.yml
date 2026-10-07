@@ -1,0 +1,35 @@
+name: Update Studies Database
+
+on:
+  workflow_dispatch:  # manual trigger only — appears as "Run workflow" button in Actions tab
+
+permissions:
+  contents: write  # needed so the workflow can commit changes back to the repo
+
+jobs:
+  update-database:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run database builder
+        run: python build-database_v3.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add studies-data.js
+          git diff --staged --quiet || git commit -m "Update studies-data.js [automated]"
+          git push
