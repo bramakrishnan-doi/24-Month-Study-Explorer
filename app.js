@@ -223,19 +223,19 @@
           '<a class="mc-catalog" href="' + s.cat + '" target="_blank" rel="noopener noreferrer" title="View in RISE Catalog">' +
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
           '</a>' +
-          '<button class="mc-edit" type="button" title="Edit Study Info" data-year="' + s.y + '" data-month="' + s.m + '" data-scenario="' + s.s + '" data-sub="' + (s.sub || "") + '">' +
-            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>' +
-          '</button>' +
+          // '<button class="mc-edit" type="button" title="Edit Study Info" data-year="' + s.y + '" data-month="' + s.m + '" data-scenario="' + s.s + '" data-sub="' + (s.sub || "") + '">' +
+          //   '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>' +
+          // '</button>' +
         '</div>';
 
-      card.querySelector(".mc-edit").addEventListener("click", (e) => {
-        const btn = e.currentTarget;
-        const y = btn.getAttribute("data-year");
-        const m = btn.getAttribute("data-month");
-        const sc = btn.getAttribute("data-scenario");
-        const sub = btn.getAttribute("data-sub");
-        openAdminModal(y, m, sc, sub);
-      });
+      // card.querySelector(".mc-edit").addEventListener("click", (e) => {
+      //   const btn = e.currentTarget;
+      //   const y = btn.getAttribute("data-year");
+      //   const m = btn.getAttribute("data-month");
+      //   const sc = btn.getAttribute("data-scenario");
+      //   const sub = btn.getAttribute("data-sub");
+      //   openAdminModal(y, m, sc, sub);
+      // });
 
       grid.appendChild(card);
     });
@@ -425,7 +425,7 @@
   // ---- Theme Toggler ----
   const tBtn = document.querySelector("[data-theme-toggle]");
   const root = document.documentElement;
-  let theme = matchMedia("(prefers-color-scheme:dark)").matches ? "dark" : "light";
+  let theme = "light";
   root.setAttribute("data-theme", theme);
   function setThemeIcon() {
     tBtn.setAttribute("aria-label", "Switch to " + (theme === "dark" ? "light" : "dark") + " mode");
@@ -565,9 +565,9 @@
   renderResults();
 
   // Show/hide all edit buttons on cards based on URL parameter
-  document.querySelectorAll(".mc-edit").forEach(btn => {
-    btn.style.display = isAdminMode() ? "" : "none";
-  });
+  // document.querySelectorAll(".mc-edit").forEach(btn => {
+  //   btn.style.display = isAdminMode() ? "" : "none";
+  // });
   // Also hide the admin panel open button if not in admin mode
   const openAdminBtn = document.getElementById("open-admin-btn");
   if (openAdminBtn && !isAdminMode()) {
