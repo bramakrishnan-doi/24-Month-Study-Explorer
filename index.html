@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Colorado River Basin 24-Month Study Explorer</title>
+  <meta name="description" content="Browse and open Bureau of Reclamation Colorado River Basin 24-Month Study reports by year and scenario." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230e7490' stroke-width='2'%3E%3Cpath d='M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+            </svg>
+          </span>
+          <div class="brand-text">
+            <span class="brand-title">24-Month Study Explorer</span>
+            <span class="brand-sub">Colorado River Basin · Bureau of Reclamation</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="link-btn compare-btn" id="compare-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline; margin-right:4px; vertical-align:middle;"><path d="M16 3h5v5M8 3H3v5M3 16v5h5M21 16v5h-5M9 12l2 2 4-4"/></svg>
+            Compare Studies
+          </button>
+          <button class="link-btn admin-btn" id="open-admin-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline; margin-right:4px; vertical-align:middle;"><path d="M12 5v14m-7-7h14"/></svg>
+            Add Study
+          </button>
+          <a class="link-btn" href="https://data.usbr.gov/catalog/6331" target="_blank" rel="noopener noreferrer">RISE Catalog ↗</a>
+          <a class="link-btn" href="extractor.html">Extract Tables</a>
+          <button class="theme-toggle" data-theme-toggle aria-label="Switch to dark mode">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="intro">
+        <h1 class="page-title">Find a 24-Month Study report</h1>
+        <p class="page-desc">
+          Select a year and a scenario to view the Bureau of Reclamation's projected
+          Colorado River Basin operations reports. Each report opens as a PDF in a new tab.
+        </p>
+      </section>
+
+      <!-- Controls -->
+      <section class="controls" aria-label="Filter studies">
+        <div class="field field-year">
+          <label class="field-label" for="year-select">Year</label>
+          <div class="select-wrap">
+            <select id="year-select" class="select"></select>
+            <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+        </div>
+
+        <div class="field field-scenario">
+          <span class="field-label" id="scenario-label">Scenario</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="scenario-label"></div>
+        </div>
+
+        <div class="field field-csv">
+          <button class="csv-btn" id="csv-btn" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Studies CSV
+          </button>
+        </div>
+      </section>
+
+      <!-- Results -->
+      <section class="results" aria-live="polite">
+        <div class="results-head">
+          <h2 class="results-title" id="results-title">Available reports</h2>
+          <span class="results-count" id="results-count"></span>
+        </div>
+        <div class="month-grid" id="month-grid"></div>
+        <div class="empty" id="empty" hidden>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <p class="empty-text">No reports available for this year and scenario.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Data source: <a href="https://data.usbr.gov" target="_blank" rel="noopener noreferrer">Reclamation Information Sharing Environment (RISE)</a>. Reports are modeled projections subject to modeling assumptions and limitations.</p>
+    </footer>
+  </div>
+
+  <!-- Compare Studies Modal -->
+  <div class="modal-overlay" id="compare-modal" hidden>
+    <div class="modal-card" style="max-width: 700px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Compare Studies</h2>
+        <button class="modal-close" id="close-compare-btn" aria-label="Close Compare Modal">&times;</button>
+      </div>
+      <div class="modal-form">
+        <p style="margin-bottom: 1.25rem; color: var(--color-text-muted); font-size: var(--text-sm);">
+          Select 2-4 studies to compare their operational data side-by-side. The PDFs will be automatically extracted.
+        </p>
+        
+        <div class="compare-select-grid" style="grid-template-columns: repeat(4, 1fr);">
+          <div class="field">
+            <label class="field-label" for="compare-study-a">Study A</label>
+            <div class="select-wrap">
+              <select id="compare-study-a" class="select">
+                <option value="">Select...</option>
+              </select>
+              <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          
+          <div class="field">
+            <label class="field-label" for="compare-study-b">Study B</label>
+            <div class="select-wrap">
+              <select id="compare-study-b" class="select">
+                <option value="">Select...</option>
+              </select>
+              <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          
+          <div class="field">
+            <label class="field-label" for="compare-study-c">Study C</label>
+            <div class="select-wrap">
+              <select id="compare-study-c" class="select">
+                <option value="">Optional...</option>
+              </select>
+              <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          
+          <div class="field">
+            <label class="field-label" for="compare-study-d">Study D</label>
+            <div class="select-wrap">
+              <select id="compare-study-d" class="select">
+                <option value="">Optional...</option>
+              </select>
+              <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="csv-btn" id="cancel-compare-btn">Cancel</button>
+          <button type="button" class="mc-open" id="start-compare-btn" style="margin-top:0; height:42px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M16 3h5v5M8 3H3v5M3 16v5h5M21 16v5h-5M9 12l2 2 4-4"/></svg>
+            Extract & Compare
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Overlay Form Panel -->
+  <div class="modal-overlay" id="admin-modal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title-text">Add New Study</h2>
+        <button class="modal-close" id="close-admin-btn" aria-label="Close Admin Panel">&times;</button>
+      </div>
+      <form id="admin-form" class="modal-form">
+        <input type="hidden" id="edit-index" value="" />
+        
+        <div class="form-grid">
+          <div class="field">
+            <label class="field-label" for="form-year">Year</label>
+            <input type="number" id="form-year" class="select" min="1900" max="2100" required placeholder="e.g. 2026" />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="form-month">Month</label>
+            <div class="select-wrap">
+              <select id="form-month" class="select" required>
+                <option value="January">January</option>
+                <option value="February">February</option>
+                <option value="March">March</option>
+                <option value="April">April</option>
+                <option value="May">May</option>
+                <option value="June">June</option>
+                <option value="July">July</option>
+                <option value="August">August</option>
+                <option value="September">September</option>
+                <option value="October">October</option>
+                <option value="November">November</option>
+                <option value="December">December</option>
+              </select>
+              <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="form-scenario">Scenario</label>
+            <div class="select-wrap">
+              <select id="form-scenario" class="select" required>
+                <option value="Most Probable">Most Probable</option>
+                <option value="Probable Minimum">Probable Minimum</option>
+                <option value="Probable Maximum">Probable Maximum</option>
+                <option value="Charts">Charts</option>
+              </select>
+              <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conditional Dual-Track Release Field -->
+        <div class="field" id="form-sub-field" style="display:none;">
+          <label class="field-label" for="form-sub">Most Probable Variant</label>
+          <div class="select-wrap">
+            <select id="form-sub" class="select">
+              <option value="">Standard / None</option>
+              <option value="6 maf">6 maf Release</option>
+              <option value="7 maf">7 maf Release</option>
+            </select>
+            <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="form-name">Study Title / Name (Optional)</label>
+          <input type="text" id="form-name" class="select" placeholder="Auto-generated if left blank" />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="form-pdf">PDF Document Link (Binary URL)</label>
+          <input type="url" id="form-pdf" class="select" required placeholder="https://data.usbr.gov/...pdf" />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="form-cat">Catalog Page Link</label>
+          <input type="url" id="form-cat" class="select" required placeholder="https://data.usbr.gov/...item/..." />
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="csv-btn btn-danger" id="delete-btn" style="display:none;">Delete Study</button>
+          <button type="button" class="csv-btn" id="export-js-btn">Export studies-data.js</button>
+          <div style="flex-grow: 1;"></div>
+          <button type="button" class="csv-btn" id="cancel-form-btn">Cancel</button>
+          <button type="submit" class="mc-open" style="margin-top:0; height:42px;">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="studies-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

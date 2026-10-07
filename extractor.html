@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>24-Month Study Table Extractor</title>
+  <meta name="description" content="Extract the 18 operational tables from a USBR 24-Month Study PDF and export each as a separate CSV file." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230e7490' stroke-width='2'%3E%3Cpath d='M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .extractor { max-width: 880px; margin: 0 auto; }
+    .drop-zone {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem;
+      padding: 3rem 1.5rem; margin-bottom: 1.5rem;
+      background: var(--color-surface); border: 2px dashed var(--color-border);
+      border-radius: var(--radius-xl); color: var(--color-text-muted); text-align: center;
+      transition: all var(--transition); cursor: pointer;
+    }
+    .drop-zone.drag-over { border-color: var(--color-primary); background: var(--color-primary-highlight); color: var(--color-primary); }
+    .drop-zone .dz-title { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; color: var(--color-text); }
+    .drop-zone input[type="file"] { display: none; }
+    .progress-card {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      padding: 1.25rem; margin-bottom: 1.5rem;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+    }
+    .progress-bar { width: 100%; height: 8px; background: var(--color-surface-offset); border-radius: var(--radius-full); overflow: hidden; }
+    .progress-bar > div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--color-primary), var(--color-max)); transition: width 200ms ease; }
+    .progress-status { font-size: var(--text-sm); color: var(--color-text-muted); }
+    .tables-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.625rem; }
+    .table-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 0.875rem;
+      background: var(--color-surface-2); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: 500;
+    }
+    .table-item .ti-check { color: var(--color-most); flex-shrink: 0; }
+    .table-item { transition: opacity var(--transition), border-color var(--transition); }
+    .table-item .table-checkbox { margin-right: 0.25rem; cursor: pointer; accent-color: var(--color-primary); }
+    .table-item .ti-check { display: none; }
+    .table-item.selected .ti-check { display: block; }
+    .tables-list-header {
+      grid-column: 1 / -1;
+      padding: 0.5rem 0.75rem;
+      background: var(--color-surface-offset);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      margin-bottom: 0.25rem;
+    }
+    .select-all-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: var(--text-sm); font-weight: 500; }
+    .select-all-label input { cursor: pointer; accent-color: var(--color-primary); }
+    .tables-list-footer {
+      grid-column: 1 / -1;
+      padding: 0.5rem 0.75rem;
+      font-size: var(--text-sm); color: var(--color-text-muted);
+      text-align: right;
+    }
+    .dup-badge {
+      margin-left: auto;
+      font-size: 0.65rem; font-weight: 700;
+      padding: 0.125rem 0.375rem;
+      background: var(--color-primary-highlight);
+      color: var(--color-primary);
+      border-radius: var(--radius-full);
+    }
+    .action-bar { display: flex; gap: 0.625rem; flex-wrap: wrap; margin-top: 1rem; }
+    .summary-banner {
+      padding: 1rem 1.25rem; border-radius: var(--radius-lg);
+      background: var(--color-primary-highlight); color: var(--color-primary);
+      font-size: var(--text-sm); font-weight: 500; margin-bottom: 1rem;
+    }
+    .err { color: var(--color-min); font-size: var(--text-sm); }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+    .back-link { font-size: var(--text-sm); color: var(--color-text-muted); }
+    .preview-modal {
+      position: fixed; inset: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.5); padding: 1rem;
+    }
+    .preview-modal.hidden { display: none; }
+    .preview-card {
+      background: var(--color-surface); border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg); max-width: 900px; width: 100%; max-height: 85vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .preview-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--color-border);
+    }
+    .preview-title { font-weight: 600; font-size: var(--text-base); }
+    .preview-close { background: none; border: none; cursor: pointer; padding: 0.25rem; color: var(--color-text-muted); font-size: 1.5rem; line-height: 1; }
+    .preview-close:hover { color: var(--color-text); }
+    .preview-body { overflow: auto; padding: 1rem; }
+    .preview-table { width: 100%; border-collapse: collapse; font-size: var(--text-xs); }
+    .preview-table th, .preview-table td { border: 1px solid var(--color-border); padding: 0.375rem 0.5rem; text-align: left; white-space: nowrap; }
+    .preview-table th { background: var(--color-surface-2); font-weight: 600; position: sticky; top: 0; }
+    .preview-table tr:nth-child(even) td { background: var(--color-surface-offset); }
+    .preview-table tr.historical td { background: #d6d8db !important; }
+    [data-theme='dark'] .preview-table tr.historical td { background: #2a3540 !important; }
+    .preview-table tr.historical td:first-child { font-weight: 600; }
+    .preview-legend {
+      display: flex; align-items: center; gap: 0.875rem; flex-wrap: wrap;
+      padding: 0.625rem 1.25rem; border-top: 1px solid var(--color-border);
+      font-size: var(--text-xs); color: var(--color-text-muted);
+      background: var(--color-surface-2);
+    }
+    .preview-legend-swatch {
+      display: inline-block; width: 14px; height: 14px; border-radius: 3px;
+      border: 1px solid var(--color-border); vertical-align: middle; margin-right: 0.375rem;
+    }
+    .preview-legend-swatch.historical { background: #d6d8db; }
+    .preview-legend-swatch.forecasted { background: var(--color-surface); }
+    .preview-legend-item { display: inline-flex; align-items: center; }
+    .preview-processed {
+      font-size: var(--text-xs); color: var(--color-text-muted);
+      padding: 0.375rem 0.625rem; background: var(--color-surface-offset);
+      border-top: 1px solid var(--color-border);
+      font-style: italic;
+    }
+    .preview-footer { padding: 0.75rem 1.25rem; border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .preview-footer .footer-right { display: flex; gap: 0.5rem; }
+    .table-item .preview-btn {
+      margin-left: auto; background: none; border: none; cursor: pointer;
+      color: var(--color-primary); padding: 0.25rem; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .table-item .preview-btn:hover { background: var(--color-primary-highlight); }
+    .table-item .preview-btn svg { width: 14px; height: 14px; }
+    /* Elevation chart panel */
+    .preview-chart-wrap {
+      border-top: 1px solid var(--color-border);
+      padding: 1rem 1.25rem 1.25rem;
+      background: var(--color-surface-2);
+    }
+    .preview-chart-wrap.hidden { display: none; }
+    .preview-chart-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .preview-chart-title { font-weight: 600; font-size: var(--text-sm); color: var(--color-text); }
+    .preview-chart-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .preview-chart-actions .csv-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.375rem 0.625rem;
+      font-size: var(--text-xs);
+    }
+    .preview-chart-hide {
+      background: none; border: none; cursor: pointer; padding: 0.25rem 0.5rem;
+      color: var(--color-text-muted); font-size: var(--text-xs); border-radius: var(--radius-sm);
+    }
+    .preview-chart-hide:hover { background: var(--color-surface-offset); color: var(--color-text); }
+    .preview-chart-canvas-wrap { position: relative; height: 320px; width: 100%; }
+    .preview-chart-legend {
+      display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;
+      font-size: var(--text-xs); color: var(--color-text-muted);
+    }
+    .preview-chart-legend-swatch {
+      display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 0.375rem;
+    }
+    .preview-chart-legend-swatch.historical { background: #1f2937; }
+    .preview-chart-legend-swatch.forecasted { background: #2563eb; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+            </svg>
+          </span>
+          <div class="brand-text">
+            <span class="brand-title">24-Month Study Table Extractor</span>
+            <span class="brand-sub">PDF → 18 CSV files · Client-side only</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <a class="link-btn" href="index.html">← Back to Explorer</a>
+          <button class="theme-toggle" data-theme-toggle aria-label="Switch to dark mode">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="extractor">
+        <div class="intro">
+          <h1 class="page-title">Extract operational tables to CSV</h1>
+          <p class="page-desc">
+            Drop in any USBR 24-Month Study PDF (e.g. <code>AUG26_6.pdf</code>) and the extractor will identify the
+            18 operation plan tables at the end of the report and save each as its own CSV file in a single ZIP archive.
+            All processing happens locally in your browser — your file never leaves your computer.
+          </p>
+        </div>
+
+        <label class="drop-zone" id="drop-zone" for="pdf-input">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <div class="dz-title">Drop your PDF here, or click to browse</div>
+          <div class="progress-status">Supports any USBR 24-Month Study PDF (Aug 2025+ format)</div>
+          <input type="file" id="pdf-input" accept="application/pdf,.pdf" />
+        </label>
+
+        <div id="progress-card" class="progress-card" hidden>
+          <div class="progress-status" id="progress-status">Loading PDF…</div>
+          <div class="progress-bar"><div id="progress-fill"></div></div>
+        </div>
+
+        <div id="summary-banner" class="summary-banner" hidden></div>
+        <div id="err" class="err" hidden></div>
+
+        <div id="results" hidden>
+          <div class="results-head">
+            <h2 class="results-title">Detected tables</h2>
+            <span class="results-count" id="results-count"></span>
+          </div>
+          <div class="tables-list" id="tables-list"></div>
+          <div class="action-bar">
+            <button class="mc-open" id="download-zip-btn" type="button" style="height:42px;">
+              Download all as ZIP
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button class="csv-btn" id="download-individual-btn" type="button">Download CSVs individually</button>
+            <button class="csv-btn" id="reset-btn" type="button">Process another PDF</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <p>Client-side PDF parser using <a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener noreferrer">PDF.js</a> & <a href="https://stuk.github.io/jszip/" target="_blank" rel="noopener noreferrer">JSZip</a>. No data is uploaded.</p>
+    </footer>
+  </div>
+
+  <!-- Preview Modal -->
+  <div id="preview-modal" class="preview-modal hidden" role="dialog" aria-modal="true">
+    <div class="preview-card">
+      <div class="preview-header">
+        <span class="preview-title" id="preview-title">Table Preview</span>
+        <button class="preview-close" id="preview-close" aria-label="Close preview">&times;</button>
+      </div>
+      <div class="preview-body">
+        <table class="preview-table" id="preview-table">
+          <thead id="preview-thead"></thead>
+          <tbody id="preview-tbody"></tbody>
+        </table>
+        <div id="preview-processed" class="preview-processed" hidden></div>
+      </div>
+      <div id="preview-chart-wrap" class="preview-chart-wrap hidden">
+        <div class="preview-chart-header">
+          <span class="preview-chart-title" id="preview-chart-title">Elevation over time</span>
+          <div class="preview-chart-actions">
+            <button class="csv-btn" id="preview-save-png-btn" type="button" title="Save chart as PNG">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Save PNG
+            </button>
+            <button class="preview-chart-hide" id="preview-chart-hide" type="button" aria-label="Hide chart">Hide</button>
+          </div>
+        </div>
+        <div class="preview-chart-canvas-wrap">
+          <canvas id="preview-chart"></canvas>
+        </div>
+        <div class="preview-chart-legend">
+          <span><span class="preview-chart-legend-swatch historical"></span>Historical</span>
+          <span><span class="preview-chart-legend-swatch forecasted"></span>Forecasted</span>
+        </div>
+      </div>
+      <div id="preview-legend" class="preview-legend" hidden>
+        <span class="preview-legend-item"><span class="preview-legend-swatch historical"></span>Historical (observed)</span>
+        <span class="preview-legend-item"><span class="preview-legend-swatch forecasted"></span>Forecasted</span>
+      </div>
+      <div class="preview-footer">
+        <button class="csv-btn" id="preview-chart-btn" type="button" hidden>📈 Elevation chart</button>
+        <div class="footer-right">
+          <button class="csv-btn" id="preview-download-btn" type="button">Download this table</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF.js from Mozilla CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- JSZip for bundling CSV files -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Chart.js for elevation line chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="extractor.js"></script>
+</body>
+</html>
