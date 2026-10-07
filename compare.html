@@ -148,19 +148,26 @@
       position: sticky;
       top: 0;
       background: var(--color-surface-2);
-      padding: 0.75rem 1rem;
+      padding: 0.55rem 0.65rem;
       text-align: left;
       font-weight: 600;
       border-bottom: 2px solid var(--color-border);
-      white-space: nowrap;
+      white-space: normal;
+      line-height: 1.2;
+      vertical-align: bottom;
+      min-width: 105px;
+      max-width: 175px;
+      overflow-wrap: anywhere;
     }
     .comparison-table th.study-a { color: #168244; }
     .comparison-table th.study-b { color: #1d4ed8; }
     .comparison-table th.study-c { color: #c22525; }
     .comparison-table th.study-d { color: #ca8a04; }
     .comparison-table th.diff { color: var(--color-text-muted); }
+    .comparison-table th:first-child { min-width: 90px; max-width: 105px; }
+    .comparison-table th.diff { min-width: 90px; max-width: 105px; }
     .comparison-table td {
-      padding: 0.625rem 1rem;
+      padding: 0.5rem 0.65rem;
       border-bottom: 1px solid var(--color-border);
       font-family: var(--font-body);
     }
@@ -380,6 +387,12 @@
 
         <!-- Chart View -->
         <div id="chart-view" class="chart-container" style="display:none;">
+          <div style="display:flex; justify-content:flex-end; margin-bottom:0.75rem;">
+            <button class="csv-btn" id="download-chart-btn" type="button" title="Download chart as PNG">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download Chart PNG
+            </button>
+          </div>
           <div class="chart-canvas-wrap">
             <canvas id="comparison-chart"></canvas>
           </div>
@@ -629,6 +642,7 @@
   const tableView = document.getElementById("table-view");
   const chartView = document.getElementById("chart-view");
   const downloadCsvBtn = document.getElementById("download-csv-btn");
+  const downloadChartBtn = document.getElementById("download-chart-btn");
   const comparisonThead = document.getElementById("comparison-thead");
   const comparisonTbody = document.getElementById("comparison-tbody");
   const themeToggleBtn = document.getElementById("theme-toggle-btn");
@@ -796,6 +810,37 @@
     return matches[0];
   }
 
+  // Align studies by the Date value in column 0 rather than by row position.
+  // Different monthly studies can begin on different months, so positional
+  // alignment shifts every value when (for example) August is compared to September.
+  function normalizeDateKey(value) {
+    return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+  }
+
+  function alignTablesByDate(tables) {
+    const maps = tables.map(table => {
+      const map = new Map();
+      table.rows.forEach(row => {
+        const key = normalizeDateKey(row && row[0]);
+        if (key && !map.has(key)) map.set(key, row);
+      });
+      return map;
+    });
+
+    const orderedKeys = [];
+    const seen = new Set();
+    tables.forEach(table => table.rows.forEach(row => {
+      const key = normalizeDateKey(row && row[0]);
+      if (key && !seen.has(key)) { seen.add(key); orderedKeys.push(key); }
+    }));
+
+    return orderedKeys.map(key => ({
+      key,
+      label: (maps.find(m => m.has(key))?.get(key)?.[0]) || "",
+      rows: maps.map(m => m.get(key) || [])
+    }));
+  }
+
   function renderTableComparison(tables) {
     let headerHtml = "<tr><th>Date</th>";
     tables.forEach((_, idx) => { headerHtml += '<th class="' + studyColorsClass[idx] + '">' + escapeHtml(studyData[idx].name) + "</th>"; });
@@ -807,16 +852,16 @@
     headerHtml += "</tr>";
     comparisonThead.innerHTML = headerHtml;
     const firstTable = tables[0];
-    const maxRows = Math.max(...tables.map(t => t.rows.length));
+    const alignedRows = alignTablesByDate(tables);
     let tbody = "";
-    for (let r = 0; r < maxRows; r++) {
-      const rows = tables.map(t => t.rows[r] || []);
+    for (let r = 0; r < alignedRows.length; r++) {
+      const rows = alignedRows[r].rows;
       for (const colIdx of selectedColumns) {
         const vals = rows.map(row => row[colIdx] || "-");
         const headerA = firstTable.headers[colIdx] || "Column " + colIdx;
         const numVals = vals.map(v => parseNumeric(v));
         const rowLabel = r === 0 ? headerA : "";
-        const dateLabel = rows[0][0] || "";
+        const dateLabel = alignedRows[r].label || "";
         let diffHtml = "";
         for (let i = 1; i < numStudies; i++) {
           if (numVals[0] !== null && numVals[i] !== null) {
@@ -843,6 +888,7 @@
     const ctx = document.getElementById("comparison-chart").getContext("2d");
     if (comparisonChart) comparisonChart.destroy();
     const filteredTables = filterWyRows(tables);
+    const alignedRows = alignTablesByDate(filteredTables);
     const isDark = document.documentElement.getAttribute("data-theme") === "dark";
     const gridColor = isDark ? "#28425a" : "#d6dee5";
     const tickColor = isDark ? "#8aa0b0" : "#5b707e";
@@ -850,7 +896,7 @@
     selectedColumns.forEach((colIdx) => {
       const header = filteredTables[0].headers[colIdx] || "Column " + colIdx;
       filteredTables.forEach((table, si) => {
-        const data = table.rows.map(row => { const val = parseNumeric(row[colIdx]); return val !== null ? val : null; });
+        const data = alignedRows.map(item => { const row = item.rows[si] || []; const val = parseNumeric(row[colIdx]); return val !== null ? val : null; });
         datasets.push({
           label: studyData[si].name + " - " + header,
           data: data,
@@ -861,7 +907,7 @@
         });
       });
     });
-    const dates = filteredTables[0].rows.map(r => r[0] || "");
+    const dates = alignedRows.map(item => item.label || "");
     comparisonChart = new Chart(ctx, {
       type: "line",
       data: { labels: dates, datasets: datasets },
@@ -887,6 +933,26 @@
     return div.innerHTML;
   }
 
+  function downloadChartPng() {
+    if (!comparisonChart) return;
+    const canvas = comparisonChart.canvas;
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+    const exportCtx = exportCanvas.getContext("2d");
+    exportCtx.fillStyle = isDark ? "#0f1d29" : "#ffffff";
+    exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    exportCtx.drawImage(canvas, 0, 0);
+    const link = document.createElement("a");
+    const reservoir = currentTable && currentTable.reservoir ? currentTable.reservoir : "comparison";
+    link.download = reservoir.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "") + "_comparison.png";
+    link.href = exportCanvas.toDataURL("image/png");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   function downloadComparisonCsv() {
     if (!currentTable || selectedColumns.length === 0 || !studyData || studyData.length === 0) return;
     const tableIdx = parseInt(tableSelect.value);
@@ -897,12 +963,12 @@
     for (let i = 0; i < numStudies; i++) headerRow.push(studyLabels[i] + " (" + studyData[i].name + ")");
     for (let i = 1; i < numStudies; i++) headerRow.push("Diff (" + studyLabels[i] + "-" + studyLabels[0] + ")");
     const rows = [headerRow];
-    const maxRows = Math.max(...tables.map(t => t.rows.length));
+    const alignedRows = alignTablesByDate(tables);
     for (const colIdx of selectedColumns) {
       const header = firstTable.headers[colIdx] || "Column " + colIdx;
-      for (let r = 0; r < maxRows; r++) {
-        const tableRows = tables.map(t => t.rows[r] || []);
-        const dateLabel = tableRows[0][0] || "";
+      for (let r = 0; r < alignedRows.length; r++) {
+        const tableRows = alignedRows[r].rows;
+        const dateLabel = alignedRows[r].label || "";
         const vals = tableRows.map(row => row[colIdx] || "");
         const numVals = vals.map(v => parseNumeric(v));
         const row = [csvEscape(dateLabel), csvEscape(header)];
@@ -947,6 +1013,7 @@
     if (selectedColumns.length > 0) renderComparison();
   });
   downloadCsvBtn.addEventListener("click", downloadComparisonCsv);
+  if (downloadChartBtn) downloadChartBtn.addEventListener("click", downloadChartPng);
 
   // ----- Initialize -----
   async function init() {
